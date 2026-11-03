@@ -2,6 +2,18 @@ import discord
 from discord.ext import commands
 import asyncio
 import os
+import sys
+import davey
+import nacl
+import nacl.secret
+import nacl.utils
+import nacl.bindings
+import cffi
+import _cffi_backend
+
+print("DAVEY OK")
+print("PyNaCl OK")
+print("CFFI OK")
 
 VC_CHANNEL_ID = 722817070739357770
 
@@ -12,15 +24,15 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-BASE_DIR = os.path.dirname(
-    os.path.abspath(__file__)
-)
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 COMMAND_FILE = os.path.join(
     BASE_DIR,
     "command.txt"
 )
-
 
 @bot.event
 async def on_ready():
@@ -120,22 +132,33 @@ async def gui_stop():
 
 async def gui_play():
 
-    if not bot.voice_clients:
-        return
+    try:
 
-    vc = bot.voice_clients[0]
+        if not bot.voice_clients:
+            return
 
-    if vc.is_playing():
-        vc.stop()
+        vc = bot.voice_clients[0]
 
-    source = discord.FFmpegPCMAudio(
-        "audio=仮想デバイス (Yamaha SYNCROOM Driver (WDM))",
-        executable=r"C:\ffmpeg\bin\ffmpeg.exe",
-        before_options="-f dshow",
-        options="-ac 2 -ar 48000 -f s16le"
-    )
+        if vc.is_playing():
+            vc.stop()
 
-    vc.play(source)
+        print("PLAY START")
+
+        source = discord.FFmpegPCMAudio(
+            "audio=仮想デバイス (Yamaha SYNCROOM Driver (WDM))",
+            executable=r"C:\ffmpeg\bin\ffmpeg.exe",
+            before_options="-f dshow",
+            options="-ac 2 -ar 48000 -f s16le"
+        )
+
+        vc.play(source)
+
+        print("PLAY OK")
+
+    except Exception as e:
+
+        print("PLAY ERROR")
+        print(repr(e))
 
 async def command_watcher():
 
