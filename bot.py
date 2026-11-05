@@ -5,8 +5,6 @@ import json
 import os
 import sys
 
-
-
 if getattr(sys, "frozen", False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
@@ -25,8 +23,6 @@ VC_CHANNEL_ID = config["vc_channel_id"]
 FFMPEG_PATH = config["ffmpeg_path"]
 AUDIO_DEVICE = config["audio_device"]
 
-print("TOKEN LEN =", len(TOKEN))
-print("TOKEN START =", TOKEN[:10])
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -40,25 +36,6 @@ else:
 
 COMMAND_FILE = os.path.join(BASE_DIR, "command.txt")
 print(CONFIG_FILE)
-if not os.path.exists(CONFIG_FILE):
-
-    default_config = {
-        "token": "SET_TOKEN_HERE",
-        "vc_channel_id": 0,
-        "ffmpeg_path": "C:\\ffmpeg\\bin\\ffmpeg.exe",
-        "audio_device": "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
-    }
-
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(
-            default_config,
-            f,
-            ensure_ascii=False,
-            indent=4
-        )
-
-    print("config.json を作成しました")
-    sys.exit()
 
 @bot.event
 async def on_ready():
