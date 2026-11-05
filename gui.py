@@ -4,6 +4,7 @@ import subprocess
 import os
 import sys
 import json
+import re
 
 # PyInstaller対応
 if getattr(sys, "frozen", False):
@@ -23,24 +24,44 @@ CONFIG_FILE = os.path.join(
     "config.json"
 )
 
+if not os.path.exists(CONFIG_FILE):
+
+    default_config = {
+        "token": "",
+        "vc_channel_id": 0,
+        "ffmpeg_path": "C:\\ffmpeg\\bin\\ffmpeg.exe",
+        "audio_device": "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
+    }
+
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            default_config,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
 def load_config():
 
     if not os.path.exists(CONFIG_FILE):
         return {
             "token": "",
-            "vc_channel_id": 0
+            "vc_channel_id": 0,
+            "ffmpeg_path": r"C:\ffmpeg\bin\ffmpeg.exe",
+            "audio_device": "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
         }
 
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+    
 def save_config():
 
     config = {
         "token": token_var.get(),
         "vc_channel_id": int(channel_var.get() or 0),
-        "ffmpeg_path": r"C:\ffmpeg\bin\ffmpeg.exe",
-        "audio_device": "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
+        "ffmpeg_path": ffmpeg_var.get(),
+        "audio_device": device_var.get()
     }
 
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -67,6 +88,48 @@ COMMAND_FILE = os.path.join(
 
 process = None
 
+def get_audio_devices():
+
+    devices = []
+
+    try:
+
+        result = subprocess.run(
+            [
+                ffmpeg_var.get(),
+                "-list_devices",
+                "true",
+                "-f",
+                "dshow",
+                "-i",
+                "dummy"
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        lines = result.stderr.splitlines()
+
+        for line in lines:
+
+            if "DirectShow audio devices" in line:
+                continue
+
+            for line in lines:
+
+                if "(audio)" in line.lower():
+
+                    m = re.search(r'"(.+)"', line)
+
+                    if m:
+                        devices.append(m.group(1))
+
+
+    except Exception as e:
+        print(e)
+
+    return devices
+
 
 def start_bot():
     global process
@@ -77,7 +140,8 @@ def start_bot():
     try:
         process = subprocess.Popen(
             [BOT_EXE],
-            cwd=os.path.dirname(BOT_EXE)
+            cwd=os.path.dirname(BOT_EXE),
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
 
         status_var.set("BOT起動中")
@@ -92,7 +156,7 @@ def send_command(cmd):
         with open(COMMAND_FILE, "w", encoding="utf-8") as f:
             f.write(cmd)
 
-        print("SEND:", cmd)
+
 
     except Exception as e:
         print(e)
@@ -110,6 +174,20 @@ def stop_bot():
         send_shutdown()
         root.after(3000, force_stop)
 
+def refresh_devices():
+
+    devices = get_audio_devices()
+
+    device_combo["values"] = devices
+
+    if devices:
+
+        current = device_var.get()
+
+        if current in devices:
+            device_combo.set(current)
+        else:
+            device_combo.current(0)
 
 def force_stop():
     global process
@@ -130,7 +208,7 @@ root = tk.Tk()
 
 
 root.title("MusicForge")
-root.geometry("700x500")
+root.geometry("900x650")
 config = load_config()
 
 token_var = tk.StringVar(
@@ -140,7 +218,19 @@ token_var = tk.StringVar(
 channel_var = tk.StringVar(
     value=str(config.get("vc_channel_id", ""))
 )
+ffmpeg_var = tk.StringVar(
+    value=config.get(
+        "ffmpeg_path",
+        r"C:\ffmpeg\bin\ffmpeg.exe"
+    )
+)
 
+device_var = tk.StringVar(
+    value=config.get(
+        "audio_device",
+        "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
+    )
+)
 
 status_var = tk.StringVar(value="BOT停止")
 settings_frame = ttk.LabelFrame(
@@ -197,17 +287,49 @@ ttk.Entry(
     pady=5,
     sticky="w"
 )
+ttk.Label(
+    settings_frame,
+    text="FFmpeg Path"
+).grid(
+    row=2,
+    column=0,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
+
+ttk.Entry(
+    settings_frame,
+    textvariable=ffmpeg_var,
+    width=80
+).grid(
+    row=2,
+    column=1,
+    padx=5,
+    pady=5
+)
+
+ttk.Label(
+    settings_frame,
+    text="Audio Device"
+).grid(
+    row=3,
+    column=0,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
+
 
 ttk.Button(
     settings_frame,
     text="設定保存",
     command=save_config
 ).grid(
-    row=2,
+    row=4,
     column=1,
-    padx=5,
-    pady=5,
-    sticky="w"
+    sticky="w",
+    pady=5
 )
 ttk.Label(
     root,
@@ -234,7 +356,30 @@ ttk.Button(
 
 frame = ttk.LabelFrame(root, text="操作")
 frame.pack(fill="x", padx=10, pady=10)
+device_combo = ttk.Combobox(
+    settings_frame,
+    textvariable=device_var,
+    width=60,
+    state="readonly"
+)
 
+device_combo.grid(
+    row=3,
+    column=1,
+    padx=5,
+    pady=5
+)
+
+ttk.Button(
+    settings_frame,
+    text="デバイス取得",
+    command=refresh_devices
+).grid(
+    row=3,
+    column=2,
+    padx=5,
+    pady=5
+)
 ttk.Button(
     frame,
     text="VC参加",
@@ -260,5 +405,5 @@ ttk.Button(
 ).grid(row=0, column=3, padx=5, pady=5)
 
 root.protocol("WM_DELETE_WINDOW", on_close)
-
+root.after(100, refresh_devices)
 root.mainloop()
