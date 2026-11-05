@@ -3,6 +3,7 @@ from tkinter import ttk
 import subprocess
 import os
 import sys
+import json
 
 # PyInstaller対応
 if getattr(sys, "frozen", False):
@@ -16,6 +17,41 @@ else:
 #   bot/
 #      bot.exe
 #      command.txt
+
+CONFIG_FILE = os.path.join(
+    BASE_DIR,
+    "config.json"
+)
+
+def load_config():
+
+    if not os.path.exists(CONFIG_FILE):
+        return {
+            "token": "",
+            "vc_channel_id": 0
+        }
+
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_config():
+
+    config = {
+        "token": token_var.get(),
+        "vc_channel_id": int(channel_var.get() or 0),
+        "ffmpeg_path": r"C:\ffmpeg\bin\ffmpeg.exe",
+        "audio_device": "仮想デバイス (Yamaha SYNCROOM Driver (WDM))"
+    }
+
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            config,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
+
+    status_var.set("設定保存完了")
 
 BOT_EXE = os.path.join(
     BASE_DIR,
@@ -88,14 +124,91 @@ def force_stop():
 def on_close():
     stop_bot()
     root.after(3500, root.destroy)
-
-
 root = tk.Tk()
+
+
+
+
 root.title("MusicForge")
 root.geometry("700x500")
+config = load_config()
+
+token_var = tk.StringVar(
+    value=config.get("token", "")
+)
+
+channel_var = tk.StringVar(
+    value=str(config.get("vc_channel_id", ""))
+)
+
 
 status_var = tk.StringVar(value="BOT停止")
+settings_frame = ttk.LabelFrame(
+    root,
+    text="設定"
+)
+settings_frame.pack(
+    fill="x",
+    padx=10,
+    pady=10
+)
 
+ttk.Label(
+    settings_frame,
+    text="Bot Token"
+).grid(
+    row=0,
+    column=0,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
+
+ttk.Entry(
+    settings_frame,
+    textvariable=token_var,
+    width=80
+).grid(
+    row=0,
+    column=1,
+    padx=5,
+    pady=5
+)
+
+ttk.Label(
+    settings_frame,
+    text="VC Channel ID"
+).grid(
+    row=1,
+    column=0,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
+
+ttk.Entry(
+    settings_frame,
+    textvariable=channel_var,
+    width=30
+).grid(
+    row=1,
+    column=1,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
+
+ttk.Button(
+    settings_frame,
+    text="設定保存",
+    command=save_config
+).grid(
+    row=2,
+    column=1,
+    padx=5,
+    pady=5,
+    sticky="w"
+)
 ttk.Label(
     root,
     text="Discord Music Bot",
