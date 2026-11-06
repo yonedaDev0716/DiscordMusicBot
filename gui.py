@@ -105,26 +105,30 @@ def get_audio_devices():
                 "dummy"
             ],
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="ignore"
         )
+
+
+        print(result.stderr)
 
         lines = result.stderr.splitlines()
 
         for line in lines:
 
-            if "DirectShow audio devices" in line:
-                continue
+            if "(audio)" in line.lower():
 
-            for line in lines:
+                m = re.search(r'"(.+)"', line)
 
-                if "(audio)" in line.lower():
+                if m:
+                    devices.append(m.group(1))
 
-                    m = re.search(r'"(.+)"', line)
-
-                    if m:
-                        devices.append(m.group(1))
-
-
+        print("FOUND DEVICES =", devices)
+        print("========== FFMPEG STDERR ==========")
+        print(result.stderr)
+        print("========== DEVICES ==========")
+        print(devices)
     except Exception as e:
         print(e)
 
